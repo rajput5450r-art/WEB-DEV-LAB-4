@@ -1,0 +1,121 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Secure Connect Chat</title>
+    <script src="http://localhost:3000/socket.io/socket.io.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #111827;
+            color: white;
+            max-width: 650px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        input, button {
+            padding: 12px;
+            margin: 6px 0;
+            border-radius: 6px;
+            border: none;
+        }
+        input { width: 95%; }
+        button {
+            background: #2563eb;
+            color: white;
+            cursor: pointer;
+        }
+        #messages {
+            background: #1f2937;
+            padding: 15px;
+            min-height: 200px;
+            border-radius: 8px;
+            overflow-wrap: anywhere;
+        }
+        .status { color: #34d399; }
+    </style>
+</head>
+<body>
+
+    <h1>Secure Connect Chat</h1>
+
+    <p class="status" id="status">Disconnected</p>
+
+    <input id="token" placeholder="Paste your JWT token">
+
+    <button onclick="connectChat()">Connect</button>
+
+    <hr>
+
+    <div id="messages"></div>
+
+    <input id="message" placeholder="Type your message">
+
+    <button onclick="sendMessage()">Send Message</button>
+
+    <script>
+        let socket;
+
+        function connectChat() {
+            const token = document.getElementById("token").value.trim();
+
+            if (!token) {
+                alert("Please enter your JWT token");
+                return;
+            }
+
+            if (socket) socket.disconnect();
+
+            socket = io("http://localhost:3000", {
+                auth: { token: token }
+            });
+
+            socket.on("connect", () => {
+                document.getElementById("status").innerText =
+                    "Connected: " + socket.id;
+            });
+
+            socket.on("connect_error", (error) => {
+                document.getElementById("status").innerText =
+                    "Connection failed: " + error.message;
+            });
+
+            socket.on("chat:system", (data) => {
+                addMessage("SYSTEM: " + data.message);
+            });
+
+            socket.on("chat:message", (data) => {
+                addMessage(data.sender + ": " + data.message);
+            });
+
+            socket.on("disconnect", () => {
+                document.getElementById("status").innerText =
+                    "Disconnected";
+            });
+        }
+
+        function sendMessage() {
+            const input = document.getElementById("message");
+            const message = input.value.trim();
+
+            if (!socket || !socket.connected) {
+                alert("Connect first!");
+                return;
+            }
+
+            if (!message) return;
+
+            socket.emit("chat:message", { message: message });
+            input.value = "";
+        }
+
+        function addMessage(message) {
+            const div = document.createElement("p");
+            div.textContent = message;
+            document.getElementById("messages").appendChild(div);
+        }
+    </script>
+
+</body>
+</html>
